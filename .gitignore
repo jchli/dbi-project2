@@ -30,3 +30,9 @@
 
 # Debug files
 *.dSYM/
+
+# System files
+*~
+
+# project-specific files
+build
