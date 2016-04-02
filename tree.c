@@ -1,8 +1,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <time.h>
 
 #include "tree.h"
+#include "random.h"
 
 // allocates memory aligned at 16-byte boundary
 #define ALIGNED_ALLOC(ptr, size) posix_memalign((void **) (&(ptr)), 16, size)
@@ -49,6 +51,7 @@ void init_partition_tree(int32_t k, int32_t num_levels, int32_t *fanouts,
 
     size_t i;
     for (i = 0; i < num_levels; i++) {
+        // allocate memory for each level of tree (represented as a single array)
         tree->fanouts[i] = fanouts[i];
         if (ALIGNED_ALLOC(tree->nodes[i], sizeof(int32_t) * fanouts[i])) {
             perror("posix_memalign");
@@ -56,6 +59,12 @@ void init_partition_tree(int32_t k, int32_t num_levels, int32_t *fanouts,
         }
     }
     
+    rand32_t *gen = rand32_init(time(NULL));
+    int32_t  *keys = generate_sorted_unique(k, gen);
+
+    // TODO: populate tree
+
+    free(keys);
 }
 
 void destroy_partition_tree(partition_tree *tree) {
