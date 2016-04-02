@@ -12,10 +12,11 @@
 int32_t max_num_keys(int32_t num_levels, int32_t *fanouts) {
     assert(num_levels > 0 && "there should be at least one level in the tree");
 
-    int32_t n = 1;
+    int32_t n = 0, keys_at_level = 1;
     size_t i;
-    for (i = 0; i < num_levels; i++) {
-        n *= (fanouts[i] - 1);
+    for (i = 0; i != num_levels; i++) {
+        keys_at_level *= (fanouts[i] - 1);
+        n += keys_at_level;
     }
     return n;
 }
@@ -67,10 +68,39 @@ void init_partition_tree(int32_t k, int32_t num_levels, int32_t *fanouts,
     free(keys);
 }
 
+int32_t num_keys_at_level(int32_t level, partition_tree *tree) {
+    if (level < 0 || level >= tree->num_levels) {
+        fprintf(stderr, "error: invalid level\n");
+        return 0;
+    }
+
+    int32_t n = 1;
+    size_t i;
+    for (i = 0; i <= level; i++)
+        n *= (tree->fanouts[i] - 1);
+    return n;
+}
+
+void print_partition_tree(partition_tree *tree) {
+    size_t i, j;
+    int32_t keys_at_level = 1;
+    for (i = 0; i != tree->num_levels; i++) {
+        printf("level %zu: [", i);
+
+        keys_at_level *= (tree->fanouts[i] - 1);
+        for (j = 0; j < keys_at_level; j++) {
+            if (tree->nodes[i][j] == INT32_MAX) break;
+            printf("%d, ", tree->nodes[i][j]);
+        }
+
+        printf("\b\b]\n");
+    }
+}
+
 void destroy_partition_tree(partition_tree *tree) {
     free(tree->fanouts);
     size_t i;
-    for (i = 0; i < tree->num_levels; i++) {
+    for (i = 0; i != tree->num_levels; i++) {
         free(tree->nodes[i]);
     }
     free(tree->nodes);
