@@ -20,9 +20,8 @@ int main(int argc, char *argv[]) {
 
     partition_tree tree;
     init_partition_tree(num_keys, num_levels, fanouts, &tree);
-    /* printf("building partition tree with %d keys, %d probes, %d levels\n", */
-    /*        num_keys, num_probes, num_levels); */
-
     print_partition_tree(&tree);
+    destroy_partition_tree(&tree);
+
     return 0;
 }
