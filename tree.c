@@ -26,17 +26,15 @@ int32_t min_num_keys(int32_t num_levels, int32_t *fanouts) {
         1 : max_num_keys(num_levels-1, fanouts+1) + 1;
 }
 
-void init_partition_tree(int k, int32_t num_levels, int32_t *fanouts,
+void init_partition_tree(int32_t k, int32_t num_levels, int32_t *fanouts,
                          partition_tree *tree) {
     if (k > max_num_keys(num_levels, fanouts)) {
-        // report error
         fprintf(stderr, "error: too many build keys for partition tree, maximum %d keys\n",
                 max_num_keys(num_levels, fanouts));
         exit(EXIT_FAILURE);
     }
 
     if (k < min_num_keys(num_levels, fanouts)) {
-        // report error
         fprintf(stderr, "error: too few build keys for partition tree, minimum %d keys\n",
                 min_num_keys(num_levels, fanouts));
         exit(EXIT_FAILURE);
@@ -48,13 +46,23 @@ void init_partition_tree(int k, int32_t num_levels, int32_t *fanouts,
         perror("posix_memalign");
         exit(EXIT_FAILURE);
     }
-    
+
     size_t i;
-    for (i = 0; i < num_levels; i++)
+    for (i = 0; i < num_levels; i++) {
         tree->fanouts[i] = fanouts[i];
+        if (ALIGNED_ALLOC(tree->nodes[i], sizeof(int32_t) * fanouts[i])) {
+            perror("posix_memalign");
+            exit(EXIT_FAILURE);
+        }
+    }
+    
 }
 
 void destroy_partition_tree(partition_tree *tree) {
     free(tree->fanouts);
+    size_t i;
+    for (i = 0; i < tree->num_levels; i++) {
+        free(tree->nodes[i]);
+    }
     free(tree->nodes);
 }
