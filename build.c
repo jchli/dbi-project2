@@ -24,5 +24,17 @@ int main(int argc, char *argv[]) {
     /*        num_keys, num_probes, num_levels); */
 
     print_partition_tree(&tree);
+
+
+    int32_t lower = INT32_MIN;
+    int32_t upper = INT32_MAX;
+    int32_t probe = 200;
+    int32_t array[10] = { 0, 2, 4, 6, 8, 10, 12, 14, 16, 18 };
+    
+    int32_t length = sizeof(array) / sizeof(array[0]);
+    printf ("index:%d\n", length);
+    binary_search_array(array, length, probe, &lower, &upper);
+    printf ("lower:%d, upper:%d\n", lower, upper);
+
     return 0;
 }

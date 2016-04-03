@@ -29,6 +29,38 @@ int32_t min_num_keys(int32_t num_levels, int32_t *fanouts) {
         1 : max_num_keys(num_levels-1, fanouts+1) + 1;
 }
 
+void binary_search_partition(partition_tree *tree, int32_t probe, int32_t *lower, int32_t *upper) {
+    *lower = INT32_MIN;
+    *upper = INT32_MAX;
+
+}
+
+void binary_search_array(int32_t *array, int32_t length, int32_t probe, int32_t *lower, int32_t *upper){
+    int32_t min = 0;
+    int32_t max = length - 1;
+    int32_t middle = (max + min) / 2;
+    printf ("min:%d, max:%d, middle:%d\n", min, max, middle);
+    while (min <= max) {
+        if (array[middle] < probe){
+            min = middle + 1;
+        } else {
+            max = middle - 1;
+        }
+        middle = (max + min) / 2;
+        printf ("min:%d, max:%d, middle:%d\n", min, max, middle);
+    }
+    if (max < 0) {
+        *lower = INT32_MIN;
+        *upper = array[min];
+    } else if (min >= length){
+        *lower = array[max];
+        *upper = INT32_MAX; 
+    } else {
+        *lower = array[max];
+        *upper = array[min];
+    }
+}
+
 void init_partition_tree(int32_t k, int32_t num_levels, int32_t *fanouts,
                          partition_tree *tree) {
     if (k > max_num_keys(num_levels, fanouts)) {
@@ -105,3 +137,4 @@ void destroy_partition_tree(partition_tree *tree) {
     }
     free(tree->nodes);
 }
+
