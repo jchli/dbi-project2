@@ -29,7 +29,7 @@ int32_t num_keys_at_level(size_t level, int32_t *fanouts) {
 }
 
 // maximum number of keys for a tree with given levels and fanouts
-// this is simply sum(num_keys_at_level(i) for each level i)
+// this is equal to sum(num_keys_at_level(i) for each level i)
 int32_t max_num_keys(int32_t num_levels, int32_t *fanouts) {
     assert(num_levels >= 0 && "num_levels should be non-negative");
     return (num_levels == 0) ? 0:
