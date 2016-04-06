@@ -38,56 +38,49 @@ int32_t min_num_keys(int32_t num_levels, int32_t *fanouts) {
 }
 
 void binary_search_array(int32_t *array, int32_t length, int32_t probe, int32_t *lower_index, int32_t *upper_index){
-    int32_t min = 0;
-    int32_t max = length - 1;
+    int32_t min = *lower_index;
+    int32_t max = *upper_index + 1;
     int32_t middle = (max + min) / 2;
     //printf ("min:%d, max:%d, middle:%d\n", min, max, middle);
-    while (min <= max) {
+    while (max - min > 1) {
         if (array[middle] < probe){
-            min = middle + 1;
+            min = middle;
         } else {
-            max = middle - 1;
+            max = middle;
         }
         middle = (max + min) / 2;
         //printf ("min:%d, max:%d, middle:%d\n", min, max, middle);
     }
-    if (max < 0) {
-        *upper_index = min;
-    } else if (min >= length){
-        *lower_index = max; 
-    } else {
-        *lower_index = max;
-        *upper_index = min;
+    if (probe <= array[*lower_index]) {
+        *upper_index = *lower_index;
+        *lower_index = *upper_index - 1;
+    } else { 
+        *upper_index = max;
+        *lower_index = *upper_index - 1;
     }
+
 }
 
-void binary_search_partition(partition_tree *tree, int32_t probe, int32_t *lower, int32_t *upper) {
-    *lower = INT32_MIN;
-    *upper = INT32_MAX;
+void binary_search_partition(partition_tree *tree, int32_t probe, int32_t *range) {
     int32_t height = tree->num_levels;
     int32_t *fanouts = tree->fanouts;
     int32_t **nodes = tree->nodes;
-    int32_t lower_index = -1;
-    int32_t upper_index = fanouts[0];
+    *range = 0;
+    int32_t lower_index, upper_index;
     for (size_t i = 0; i < height; i++) {
-        int32_t length = fanouts[i];
+        int32_t length = fanouts[i] - 1;
         int32_t *array = nodes[i];
+        lower_index = *range * length;
+        upper_index = lower_index + length - 1;
         binary_search_array(array, length, probe, &lower_index, &upper_index);
-        if (lower_index != -1) {
-            *lower = array[lower_index];
-        }
-        if (upper_index != length){
-            *upper = array[upper_index];
-            if (i < height - 1){
-                lower_index = upper_index * fanouts[i] - 1;
-                upper_index = upper_index * fanouts[i] + 1;
-            }
-        } else
-            break;
+        *range = upper_index + *range;
+        //printf("(%d, %d) #:%d ", lower_index, upper_index, *range);
 
     }
-
+    //printf("final: (%d, %d) #:%d ", lower_index, upper_index, *range);
 }
+
+
 
 void init_partition_tree(int32_t k, int32_t num_levels, int32_t *fanouts,
                          partition_tree *tree) {

@@ -8,7 +8,7 @@
 
 int main(int argc, char *argv[]) {
     if (argc < 4) {
-        printf("usage: %s <num keys> <num probes> <list of fanout parameters...>", argv[0]);
+        printf("usage: %s <num keys> <num probes> <list of fanout parameters...>\n", argv[0]);
     }
     
     int32_t num_keys   = atoi(argv[1]);
@@ -24,9 +24,7 @@ int main(int argc, char *argv[]) {
     init_partition_tree(num_keys, num_levels, fanouts, &tree);
     print_partition_tree(&tree);
 
-    // initialize the lower and upper bound
-    int32_t lower = INT32_MIN;
-    int32_t upper = INT32_MAX;
+
     rand32_t *gen = rand32_init(time(NULL));
     int32_t  *probes = generate_sorted_unique(num_probes, gen);
 
@@ -36,11 +34,18 @@ int main(int argc, char *argv[]) {
     } */
 
     for (size_t i = 0; i < num_probes; i++){
-        lower = INT32_MIN;
-        upper = INT32_MAX;
-        binary_search_partition(&tree, probes[i], &lower, &upper);
-        printf("%d is between (%d, %d]\n", probes[i], lower, upper);
+        int32_t range = -1;
+        binary_search_partition(&tree, probes[i], &range);
+        printf("%d is in range %d\n", probes[i], range);
     }
+
+    /*
+    int32_t array[7] = {0,2,4,6,8,10,12};
+    int32_t lower_index = 2;
+    int32_t upper_index = 5;
+    binary_search_array(array, 7, 10, &lower_index, &upper_index);
+    printf("%d\n", upper_index);
+    */
 
     destroy_partition_tree(&tree);
 
