@@ -26,7 +26,7 @@ int main(int argc, char *argv[]) {
 
 
     rand32_t *gen = rand32_init(time(NULL));
-    int32_t  *probes = generate_sorted_unique(num_probes, gen);
+    int32_t  *probes = generate(num_probes, gen);
 
     /*
     for (size_t i = 0; i < num_probes; i++) {

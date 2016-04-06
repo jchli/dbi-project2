@@ -8,5 +8,5 @@ typedef struct {
 } rand32_t;
 
 rand32_t *rand32_init(uint32_t x);
-
+int32_t *generate(size_t n, rand32_t *gen);
 int32_t *generate_sorted_unique(size_t n, rand32_t *gen);
