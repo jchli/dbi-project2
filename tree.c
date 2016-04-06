@@ -3,6 +3,14 @@
 #include <assert.h>
 #include <time.h>
 
+#include <xmmintrin.h>
+#include <emmintrin.h>
+#include <pmmintrin.h>
+#include <tmmintrin.h>
+#include <smmintrin.h>
+#include <nmmintrin.h>
+#include <ammintrin.h>
+
 #include "tree.h"
 #include "random.h"
 
@@ -63,7 +71,6 @@ void binary_search_array(int32_t *array, int32_t length, int32_t probe, int32_t 
         *upper_index = max;
         *lower_index = *upper_index - 1;
     }
-
 }
 
 void binary_search_partition(partition_tree *tree, int32_t probe, int32_t *range) {
@@ -85,6 +92,28 @@ void binary_search_partition(partition_tree *tree, int32_t probe, int32_t *range
     //printf("final: (%d, %d) #:%d ", lower_index, upper_index, *range);
 }
 
+void binary_search_array_simd(int32_t *array, int32_t length, int32_t probe, 
+                              int32_t *lower_index, int32_t *upper_index) {
+    assert(length == 4 || length == 8 || length == 16);
+    
+}
+
+void binary_search_simd(partition_tree *tree, int32_t probe, int32_t *range) {
+    int32_t height = tree->num_levels;
+    int32_t *fanouts = tree->fanouts;
+    int32_t **nodes = tree->nodes;
+    *range = 0;
+    int32_t lower_index, upper_index;
+    for (size_t i = 0; i < height; i++) {
+        int32_t length = fanouts[i] - 1;
+        int32_t *array = nodes[i];
+        lower_index = *range * length;
+        upper_index = lower_index + length - 1;
+        binary_search_array_simd(array, length, probe, 
+                                 &lower_index, &upper_index);
+        *range = upper_index + *range;
+    }
+}
 
 
 void init_partition_tree(int32_t k, int32_t num_levels, int32_t *fanouts,
@@ -148,10 +177,18 @@ void init_partition_tree(int32_t k, int32_t num_levels, int32_t *fanouts,
         }
     }
 
-    // pad the rest of the tree with INT32_MAX
+    // pad each level with INT32_MAX (pad at least one node)
     for (i = 0; i < num_levels; i++) {
-        for (j = tails[i]; j < num_keys_at_level(i, fanouts); j++)
+        int32_t step = fanouts[i] - 1;
+        int32_t nkeys = num_keys_at_level(i, fanouts);
+        if (tails[i] >= nkeys)
+            continue;
+
+        j = tails[i];
+        do {
             tree->nodes[i][j] = INT32_MAX;
+            ++j;
+        } while ((j % step) != 0);
     }
 
     free(keys);
@@ -165,8 +202,8 @@ void print_partition_tree(partition_tree *tree) {
 
         for (j = 0; j < keys_at_level; j++) {
             if (tree->nodes[i][j] == INT32_MAX) {
-                printf("MAX_INT...  ");
-                break;
+                printf("MAX_INT, ");
+                continue;
             }
             printf("%d, ", tree->nodes[i][j]);
         }
