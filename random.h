@@ -1,5 +1,7 @@
 #pragma once
 
+#include <stdint.h>
+
 typedef struct {
 	size_t index;
 	uint32_t num[625];
