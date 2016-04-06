@@ -1,8 +1,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <time.h>
 
 #include "tree.h"
+#include "random.h"
 
 int main(int argc, char *argv[]) {
     if (argc < 4) {
@@ -20,21 +22,28 @@ int main(int argc, char *argv[]) {
 
     partition_tree tree;
     init_partition_tree(num_keys, num_levels, fanouts, &tree);
-    /* printf("building partition tree with %d keys, %d probes, %d levels\n", */
-    /*        num_keys, num_probes, num_levels); */
-
     print_partition_tree(&tree);
 
-
+    // initialize the lower and upper bound
     int32_t lower = INT32_MIN;
     int32_t upper = INT32_MAX;
-    int32_t probe = 200;
-    int32_t array[10] = { 0, 2, 4, 6, 8, 10, 12, 14, 16, 18 };
-    
-    int32_t length = sizeof(array) / sizeof(array[0]);
-    printf ("index:%d\n", length);
-    binary_search_array(array, length, probe, &lower, &upper);
-    printf ("lower:%d, upper:%d\n", lower, upper);
+    rand32_t *gen = rand32_init(time(NULL));
+    int32_t  *probes = generate_sorted_unique(num_probes, gen);
+
+    /*
+    for (size_t i = 0; i < num_probes; i++) {
+        printf("%d \n", probes[i]);
+    } */
+
+    for (size_t i = 0; i < num_probes; i++){
+        lower = INT32_MIN;
+        upper = INT32_MAX;
+        binary_search_partition(&tree, probes[i], &lower, &upper);
+        printf("%d is between (%d, %d]\n", probes[i], lower, upper);
+    }
+
+    destroy_partition_tree(&tree);
+
 
     return 0;
 }

@@ -3,7 +3,7 @@ CFLAGS=-Wall -g
 OUT=build
 SRCS=*.c
 
-all: build
+all: clean build
 
 build: tree.o random.o build.o
 	$(CC) $(CFLAGS) tree.o random.o build.o -o $(OUT)
