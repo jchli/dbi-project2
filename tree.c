@@ -7,7 +7,12 @@
 #include "random.h"
 
 // allocates memory aligned at 16-byte boundary
-#define ALIGNED_ALLOC(ptr, size) posix_memalign((void **) (&(ptr)), 16, size)
+#define ALIGNED_ALLOC(ptr, size) {                          \
+        if (posix_memalign((void **) (&(ptr)), 16, size)) { \
+            perror("posix_memalign");                       \
+            exit(EXIT_FAILURE);                             \
+        }                                                   \
+    }
 
 int32_t num_keys_at_level(size_t level, int32_t *fanouts) {
     assert(level >= 0 && "level should be non-negative");
@@ -97,23 +102,16 @@ void init_partition_tree(int32_t k, int32_t num_levels, int32_t *fanouts,
     }
 
     tree->num_levels = num_levels;
-    if (ALIGNED_ALLOC(tree->fanouts, sizeof(int32_t  ) * num_levels) ||
-        ALIGNED_ALLOC(tree->nodes,   sizeof(int32_t *) * num_levels)) {
-        perror("posix_memalign");
-        exit(EXIT_FAILURE);
-    }
+    ALIGNED_ALLOC(tree->fanouts, sizeof(int32_t  ) * num_levels);
+    ALIGNED_ALLOC(tree->nodes,   sizeof(int32_t *) * num_levels);
 
     size_t i;
     for (i = 0; i < num_levels; i++) {
         // allocate memory for each level of tree (represented as a single array)
         tree->fanouts[i] = fanouts[i];
-        if (ALIGNED_ALLOC(tree->nodes[i],
-                          sizeof(int32_t) * num_keys_at_level(i, fanouts))) {
-            perror("posix_memalign");
-            exit(EXIT_FAILURE);
-        }
+        ALIGNED_ALLOC(tree->nodes[i],
+                      sizeof(int32_t) * num_keys_at_level(i, fanouts));
     }
-    
 
     // populate the tree with randomly-generated integers
     rand32_t *gen = rand32_init(time(NULL));
