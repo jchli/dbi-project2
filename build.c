@@ -35,6 +35,5 @@ int main(int argc, char *argv[]) {
 
     destroy_partition_tree(&tree);
 
-
     return 0;
 }

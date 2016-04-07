@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-Wall -g -msse4.2
+CFLAGS=-Wall -g -msse4.2 -std=c99
 OUT=build
 SRCS=*.c
 
