@@ -41,7 +41,6 @@ void binary_search_array(int32_t *array, int32_t length, int32_t probe, int32_t 
     int32_t min = *lower_index;
     int32_t max = *upper_index + 1;
     int32_t middle = (max + min) / 2;
-    //printf ("min:%d, max:%d, middle:%d\n", min, max, middle);
     while (max - min > 1) {
         if (array[middle] < probe){
             min = middle;
@@ -49,8 +48,8 @@ void binary_search_array(int32_t *array, int32_t length, int32_t probe, int32_t 
             max = middle;
         }
         middle = (max + min) / 2;
-        //printf ("min:%d, max:%d, middle:%d\n", min, max, middle);
     }
+    // the probe is smaller than the smallest number in the array 
     if (probe <= array[*lower_index]) {
         *upper_index = *lower_index;
         *lower_index = *upper_index - 1;
@@ -65,6 +64,7 @@ void binary_search_partition(partition_tree *tree, int32_t probe, int32_t *range
     int32_t height = tree->num_levels;
     int32_t *fanouts = tree->fanouts;
     int32_t **nodes = tree->nodes;
+    // initialize the range 
     *range = 0;
     int32_t lower_index, upper_index;
     for (size_t i = 0; i < height; i++) {
@@ -73,11 +73,9 @@ void binary_search_partition(partition_tree *tree, int32_t probe, int32_t *range
         lower_index = *range * length;
         upper_index = lower_index + length - 1;
         binary_search_array(array, length, probe, &lower_index, &upper_index);
+        // add the offset to the upper_index from the binary search for the range
         *range = upper_index + *range;
-        //printf("(%d, %d) #:%d ", lower_index, upper_index, *range);
-
     }
-    //printf("final: (%d, %d) #:%d ", lower_index, upper_index, *range);
 }
 
 
