@@ -11,6 +11,7 @@
 #include <smmintrin.h>
 #include <nmmintrin.h>
 #include <ammintrin.h>
+#include <immintrin.h>
 
 #include "tree.h"
 #include "random.h"
@@ -68,7 +69,7 @@ void binary_search_array(int32_t *array, int32_t length, int32_t probe, int32_t 
     if (probe <= array[*lower_index]) {
         *upper_index = *lower_index;
         *lower_index = *upper_index - 1;
-    } else { 
+    } else {
         *upper_index = max;
         *lower_index = *upper_index - 1;
     }
@@ -95,8 +96,25 @@ void binary_search_partition(partition_tree *tree, int32_t probe, int32_t *range
 
 void binary_search_array_simd(int32_t *array, int32_t length, int32_t probe, 
                               int32_t *lower_index, int32_t *upper_index) {
-    assert(length == 4 || length == 8 || length == 16);
-    
+    switch (length) {
+    case 4: {
+        /* __m128i keys = _mm_load_si128((__m128i *) &array[*lower_index]); */
+        /* __m128i p    = _mm_loadu_si32(&probe); */
+        /* __mmask8 cmp = _mm_cmp_epi32_mask(p, keys, _MM_CMPINT_NLT); // NLT = GT */
+        break;
+    }
+
+    case 8: {
+        break;
+    }
+
+    case 16: {
+        break;
+    }
+
+    default:
+        assert(0 && "length should be one of 4, 8, 16");
+    }
 }
 
 void binary_search_simd(partition_tree *tree, int32_t probe, int32_t *range) {

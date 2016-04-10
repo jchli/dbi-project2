@@ -22,7 +22,7 @@ int main(int argc, char *argv[]) {
 
     partition_tree tree;
     init_partition_tree(num_keys, num_levels, fanouts, &tree);
-    print_partition_tree(&tree);
+    // print_partition_tree(&tree);
 
     rand32_t *gen = rand32_init(time(NULL));
     int32_t  *probes = generate(num_probes, gen);
