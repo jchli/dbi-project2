@@ -9,10 +9,22 @@
 int main(int argc, char *argv[]) {
     if (argc < 4) {
         printf("usage: %s <num keys> <num probes> <list of fanout parameters...>\n", argv[0]);
+        return 1;
     }
     
     int32_t num_keys   = atoi(argv[1]);
     int32_t num_probes = atoi(argv[2]);
+
+    if (num_keys < 0) {
+        printf("error: number of keys should be positive\n");
+        return 1;
+    }
+
+    if (num_probes < 0) {
+        printf("error: number of probes should be positive\n");
+        return 1;
+    }
+    
     int32_t num_levels = argc - 3;
     int32_t fanouts[num_levels];
     size_t  i;
