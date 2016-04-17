@@ -11,7 +11,8 @@ typedef struct partition_tree {
  * of keys, levels, and fanout at each level
  * keys are generated with the provided random number generation code
  */
-void init_partition_tree(int32_t k, int32_t num_levels, int32_t fanouts[],
+void init_partition_tree(int32_t k, int32_t *keys,
+                         int32_t num_levels, int32_t fanouts[],
                          partition_tree *tree);
 
 /**

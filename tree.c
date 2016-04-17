@@ -135,7 +135,7 @@ void binary_search_simd(partition_tree *tree, int32_t probe, int32_t *range) {
 }
 
 
-void init_partition_tree(int32_t k, int32_t num_levels, int32_t *fanouts,
+void init_partition_tree(int32_t k, int32_t *keys, int32_t num_levels, int32_t *fanouts,
                          partition_tree *tree) {
     if (k > max_num_keys(num_levels, fanouts)) {
         fprintf(stderr, "error: too many build keys for partition tree, maximum %d keys\n",
@@ -160,11 +160,6 @@ void init_partition_tree(int32_t k, int32_t num_levels, int32_t *fanouts,
         ALIGNED_ALLOC(tree->nodes[i],
                       sizeof(int32_t) * num_keys_at_level(i, fanouts));
     }
-
-    // populate the tree with randomly-generated integers
-    rand32_t *gen = rand32_init(time(NULL));
-    int32_t  *keys = generate_sorted_unique(k, gen);
-    free(gen);
 
     // tail at each level
     size_t tails[num_levels];
@@ -198,19 +193,11 @@ void init_partition_tree(int32_t k, int32_t num_levels, int32_t *fanouts,
 
     // pad each level with INT32_MAX (pad at least one node)
     for (i = 0; i < num_levels; i++) {
-        int32_t step = fanouts[i] - 1;
+        // int32_t step = fanouts[i] - 1;
         int32_t nkeys = num_keys_at_level(i, fanouts);
-        if (tails[i] >= nkeys)
-            continue;
-
-        j = tails[i];
-        do {
+        for (j = tails[i]; j < nkeys; j++)
             tree->nodes[i][j] = INT32_MAX;
-            ++j;
-        } while ((j % step) != 0);
     }
-
-    free(keys);
 }
 
 void print_partition_tree(partition_tree *tree) {
@@ -221,7 +208,7 @@ void print_partition_tree(partition_tree *tree) {
 
         for (j = 0; j < keys_at_level; j++) {
             if (tree->nodes[i][j] == INT32_MAX) {
-                printf("MAX_INT, ");
+                printf("MAX, ");
                 continue;
             }
             printf("%d, ", tree->nodes[i][j]);

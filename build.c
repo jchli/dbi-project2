@@ -6,6 +6,9 @@
 #include "tree.h"
 #include "random.h"
 
+// verifies that the resulting range of a probe is correct
+void verify_probe(int32_t num_keys, int32_t *keys, int32_t probe, int32_t range);
+
 int main(int argc, char *argv[]) {
     if (argc < 4) {
         printf("usage: %s <num keys> <num probes> <list of fanout parameters...>\n", argv[0]);
@@ -32,20 +35,46 @@ int main(int argc, char *argv[]) {
         fanouts[i] = atoi(argv[i+3]);
     }
 
+    // generate keys and build the partition tree
     partition_tree tree;
-    init_partition_tree(num_keys, num_levels, fanouts, &tree);
-    // print_partition_tree(&tree);
+    rand32_t *gen  = rand32_init(time(NULL));
+    int32_t  *keys = generate_sorted_unique(num_keys, gen);
+    init_partition_tree(num_keys, keys, num_levels, fanouts, &tree);
+    print_partition_tree(&tree);
 
-    rand32_t *gen = rand32_init(time(NULL));
+    // generate probes
+    /* rand32_t *gen = rand32_init(time(NULL)); */
     int32_t  *probes = generate(num_probes, gen);
 
+    // binary search
+    int32_t range = -1;
     for (size_t i = 0; i < num_probes; i++){
-        int32_t range = -1;
         binary_search_partition(&tree, probes[i], &range);
+
+        // NOTE: comment these out when doing performance tests
+        verify_probe(num_keys, keys, probes[i], range);
         printf("%d %d\n", probes[i], range);
     }
 
     destroy_partition_tree(&tree);
+    free(gen);
+    free(keys);
+    free(probes);
 
     return 0;
+}
+
+// NOTE: branch left if probe key is the same as delimiter
+void verify_probe(int32_t num_keys, int32_t *keys, int32_t probe, int32_t range) {
+    int32_t i = 0;
+    for (i = 0; i < num_keys; i++) {
+        if (probe <= keys[i]) {
+            if (range != i)
+                printf("WARNING: incorrect probe result, range should be %d\n",i);
+            return ;
+        }
+    }
+
+    if (range != num_keys)
+        printf("WARNING: incorrect probe result, range should be %d\n", num_keys);
 }
