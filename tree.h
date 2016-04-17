@@ -16,11 +16,14 @@ void init_partition_tree(int32_t k, int32_t *keys,
                          partition_tree *tree);
 
 /**
-* return the partition of the given probe
-*/
+ * return the partition of the given probe
+ */
 void binary_search_partition(partition_tree *tree, int32_t probe, int32_t *range);
 
-void binary_search_simd(partition_tree *tree, int32_t probe, int32_t *range);
+/**
+ * return the partition of the given probe, using SIMD instructions
+ */
+void binary_search_partition_simd(partition_tree *tree, int32_t probe, int32_t *range);
 
 
 /**
