@@ -11,6 +11,8 @@
 #include <smmintrin.h>
 #include <nmmintrin.h>
 #include <ammintrin.h>
+#include <immintrin.h>
+#include <x86intrin.h>
 
 #include "tree.h"
 #include "random.h"
@@ -67,7 +69,7 @@ void binary_search_array(int32_t *array, int32_t length, int32_t probe, int32_t 
     if (probe <= array[*lower_index]) {
         *upper_index = *lower_index;
         *lower_index = *upper_index - 1;
-    } else { 
+    } else {
         *upper_index = max;
         *lower_index = *upper_index - 1;
     }
@@ -93,11 +95,81 @@ void binary_search_partition(partition_tree *tree, int32_t probe, int32_t *range
 
 void binary_search_array_simd(int32_t *array, int32_t length, int32_t probe, 
                               int32_t *lower_index, int32_t *upper_index) {
-    assert(length == 4 || length == 8 || length == 16);
+    // TODO: i didn't find a better way to load except this float thing...
+    __m128i p   = _mm_castps_si128(_mm_load1_ps((float *) &probe));
+    int32_t res = 0; // result: offset of first array element greater than probe
     
+    switch (length) {
+    case 4: {
+        __m128i dels = _mm_load_si128((__m128i *) &array[*lower_index]);
+        __m128i cmp = _mm_cmpgt_epi32(p, dels);
+        
+        cmp = _mm_packs_epi32(cmp, _mm_setzero_si128());
+        cmp = _mm_packs_epi16(cmp, _mm_setzero_si128());
+
+        // apparently if mask = 0 or 1, res = 0, so I'm shifting mask by 1
+        int mask = _mm_movemask_epi8(cmp);
+        res  = _bit_scan_reverse(mask << 1);
+
+        /* printf("keys: %d %d %d %d\n", array[*lower_index], array[*lower_index+1], array[*lower_index+2], array[*lower_index+3]); */
+        /* printf("mask: %0x\n", mask); */
+        /* printf("res:  %0x\n", res); */
+        break;
+    }
+
+    case 8: {
+        __m128i dels_ABCD = _mm_load_si128((__m128i *) &array[*lower_index]);
+        __m128i dels_EFGH = _mm_load_si128((__m128i *) &array[*lower_index+4]);
+        
+        __m128i cmp_ABCD = _mm_cmpgt_epi32(p, dels_ABCD);
+        __m128i cmp_EFGH = _mm_cmpgt_epi32(p, dels_EFGH);
+        
+        __m128i cmp_A2H = _mm_packs_epi32(cmp_ABCD, cmp_EFGH);
+        __m128i cmp     = _mm_packs_epi16(cmp_A2H, _mm_setzero_si128());
+
+        // apparently if mask = 0 or 1, res = 0, so I'm shifting mask by 1
+        int mask = _mm_movemask_epi8(cmp);
+        res  = _bit_scan_reverse(mask << 1);
+        
+        break;
+    }
+
+    case 16: {
+        __m128i dels_ABCD = _mm_load_si128((__m128i *) &array[*lower_index]);
+        __m128i dels_EFGH = _mm_load_si128((__m128i *) &array[*lower_index+4]);
+        __m128i dels_IJKL = _mm_load_si128((__m128i *) &array[*lower_index+8]);
+        __m128i dels_MNOP = _mm_load_si128((__m128i *) &array[*lower_index+12]);
+        
+        __m128i cmp_ABCD = _mm_cmpgt_epi32(p, dels_ABCD);
+        __m128i cmp_EFGH = _mm_cmpgt_epi32(p, dels_EFGH);
+        __m128i cmp_IJKL = _mm_cmpgt_epi32(p, dels_IJKL);
+        __m128i cmp_MNOP = _mm_cmpgt_epi32(p, dels_MNOP);
+        
+        __m128i cmp_A2H = _mm_packs_epi32(cmp_ABCD, cmp_EFGH);
+        __m128i cmp_I2P = _mm_packs_epi32(cmp_IJKL, cmp_MNOP);
+        __m128i cmp     = _mm_packs_epi16(cmp_A2H,  cmp_I2P);
+
+        // apparently if mask = 0 or 1, res = 0, so I'm shifting mask by 1
+        int mask = _mm_movemask_epi8(cmp);
+        res  = _bit_scan_reverse(mask << 1);
+
+        break;
+    }
+
+    default:
+        assert(0 && "length should be one of 4, 8, 16");
+    }
+
+    if (res == 0) {
+        *upper_index = *lower_index;
+        *lower_index = *lower_index - 1;
+    } else {
+        *lower_index = *lower_index + res - 1;
+        *upper_index = *lower_index + 1;
+    }
 }
 
-void binary_search_simd(partition_tree *tree, int32_t probe, int32_t *range) {
+void binary_search_partition_simd(partition_tree *tree, int32_t probe, int32_t *range) {
     int32_t height = tree->num_levels;
     int32_t *fanouts = tree->fanouts;
     int32_t **nodes = tree->nodes;
@@ -114,8 +186,13 @@ void binary_search_simd(partition_tree *tree, int32_t probe, int32_t *range) {
     }
 }
 
+// hard-coded version of binary search
+void binary_search_partition_959(partition_tree *tree, int32_t probe, int32_t *range) {
+    assert(tree->num_levels == 3);
+    assert(tree->fanouts[0] == 9 && tree->fanouts[1] == 5 && tree->fanouts[2] == 9);
+}
 
-void init_partition_tree(int32_t k, int32_t num_levels, int32_t *fanouts,
+void init_partition_tree(int32_t k, int32_t *keys, int32_t num_levels, int32_t *fanouts,
                          partition_tree *tree) {
     if (k > max_num_keys(num_levels, fanouts)) {
         fprintf(stderr, "error: too many build keys for partition tree, maximum %d keys\n",
@@ -140,11 +217,6 @@ void init_partition_tree(int32_t k, int32_t num_levels, int32_t *fanouts,
         ALIGNED_ALLOC(tree->nodes[i],
                       sizeof(int32_t) * num_keys_at_level(i, fanouts));
     }
-
-    // populate the tree with randomly-generated integers
-    rand32_t *gen = rand32_init(time(NULL));
-    int32_t  *keys = generate_sorted_unique(k, gen);
-    free(gen);
 
     // tail at each level
     size_t tails[num_levels];
@@ -178,19 +250,11 @@ void init_partition_tree(int32_t k, int32_t num_levels, int32_t *fanouts,
 
     // pad each level with INT32_MAX (pad at least one node)
     for (i = 0; i < num_levels; i++) {
-        int32_t step = fanouts[i] - 1;
+        // int32_t step = fanouts[i] - 1;
         int32_t nkeys = num_keys_at_level(i, fanouts);
-        if (tails[i] >= nkeys)
-            continue;
-
-        j = tails[i];
-        do {
+        for (j = tails[i]; j < nkeys; j++)
             tree->nodes[i][j] = INT32_MAX;
-            ++j;
-        } while ((j % step) != 0);
     }
-
-    free(keys);
 }
 
 void print_partition_tree(partition_tree *tree) {
@@ -201,7 +265,7 @@ void print_partition_tree(partition_tree *tree) {
 
         for (j = 0; j < keys_at_level; j++) {
             if (tree->nodes[i][j] == INT32_MAX) {
-                printf("MAX_INT, ");
+                printf("MAX, ");
                 continue;
             }
             printf("%d, ", tree->nodes[i][j]);
