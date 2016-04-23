@@ -29,7 +29,7 @@ void binary_search_partition_simd(partition_tree *tree, int32_t probe, int32_t *
  * hard-coded version of binary search for 9-5-9 trees
  * incorporates additional optimizations
  */
-void binary_search_partition_959(partition_tree *tree, int32_t* probes, int32_t *ranges);
+void binary_search_partition_959(partition_tree *tree, int32_t num_probes, int32_t* probes, int32_t *ranges);
 
 /**
  * prints contents of the partition tree
