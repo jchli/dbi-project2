@@ -54,7 +54,9 @@ int main(int argc, char *argv[]) {
     // build the partition tree
     partition_tree tree;
     init_partition_tree(num_keys, keys, num_levels, fanouts, &tree);
-    print_partition_tree(&tree);
+    /* print_partition_tree(&tree); */
+
+    clock_t start = clock();
 
     // binary search
     if (num_levels == 3 && fanouts[0] == 9 && fanouts[1] == 5 && fanouts[2] == 9) {
@@ -63,21 +65,26 @@ int main(int argc, char *argv[]) {
         for (size_t i = 0; i + 3 < num_probes; i += 4) {
             binary_search_partition_959(&tree, &probes[i], ranges);
 
-            for (size_t j = 0; j < 4; j++) {
-                verify_probe(num_keys, keys, probes[i+j], ranges[j]);
-                printf("%d %d\n", probes[i+j], ranges[j]);
-            }
+            /* for (size_t j = 0; j < 4; j++) { */
+            /*     verify_probe(num_keys, keys, probes[i+j], ranges[j]); */
+            /*     printf("%d %d\n", probes[i+j], ranges[j]); */
+            /* } */
         }
     } else {
         int32_t range = -1;
         for (size_t i = 0; i < num_probes; i++){
             binary_search_partition_simd(&tree, probes[i], &range);
 
-            // NOTE: comment these out when doing performance tests
-            verify_probe(num_keys, keys, probes[i], range);
-            printf("%d %d\n", probes[i], range);
+            /* // NOTE: comment these out when doing performance tests */
+            /* verify_probe(num_keys, keys, probes[i], range); */
+            /* printf("%d %d\n", probes[i], range); */
         }
     }
+
+    clock_t end = clock();
+    
+    double elapsed_time = (end - start)/(double)CLOCKS_PER_SEC * 1000;
+    printf("elapsed time for phase 2: %.3f milliseconds.\n", elapsed_time);
 
     destroy_partition_tree(&tree);
     free(gen);
