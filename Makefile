@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-Wall -g -msse4.2 -msse4a -std=c99
+CFLAGS=-Wall -g -msse4.2 -msse4a -std=c99 -O3 -flto -march=native
 OUT=build
 SRCS=*.c
 
