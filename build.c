@@ -39,30 +39,44 @@ int main(int argc, char *argv[]) {
     rand32_t *gen  = rand32_init(time(NULL));
     int32_t  *keys = generate_sorted_unique(num_keys, gen);
     
+    // generate probes
+    int32_t  *probes = generate(num_probes, gen);
+
+    /* // these are for testing */
     /* int32_t *keys = malloc(num_keys * sizeof(int32_t)); */
     /* for (i = 0; i != num_keys; i++) */
     /*     keys[i] = i; */
-
-    // build the partition tree
-    partition_tree tree;
-    init_partition_tree(num_keys, keys, num_levels, fanouts, &tree);
-    /* print_partition_tree(&tree); */
-    
-    // generate probes
-    int32_t  *probes = generate(num_probes, gen);
 
     /* int32_t *probes = malloc(num_probes * sizeof(int32_t)); */
     /* for (i = 0; i != num_probes; i++) */
     /*     probes[i] = i; */
 
-    // binary search
-    int32_t range = -1;
-    for (size_t i = 0; i < num_probes; i++){
-        binary_search_partition_simd(&tree, probes[i], &range);
+    // build the partition tree
+    partition_tree tree;
+    init_partition_tree(num_keys, keys, num_levels, fanouts, &tree);
+    print_partition_tree(&tree);
 
-        // NOTE: comment these out when doing performance tests
-        verify_probe(num_keys, keys, probes[i], range);
-        printf("%d %d\n", probes[i], range);
+    // binary search
+    if (num_levels == 3 && fanouts[0] == 9 && fanouts[1] == 5 && fanouts[2] == 9) {
+        // hard-coded 9-5-9 tree
+        int32_t ranges[4];
+        for (size_t i = 0; i + 3 < num_probes; i += 4) {
+            binary_search_partition_959(&tree, &probes[i], ranges);
+
+            for (size_t j = 0; j < 4; j++) {
+                verify_probe(num_keys, keys, probes[i+j], ranges[j]);
+                printf("%d %d\n", probes[i+j], ranges[j]);
+            }
+        }
+    } else {
+        int32_t range = -1;
+        for (size_t i = 0; i < num_probes; i++){
+            binary_search_partition_simd(&tree, probes[i], &range);
+
+            // NOTE: comment these out when doing performance tests
+            verify_probe(num_keys, keys, probes[i], range);
+            printf("%d %d\n", probes[i], range);
+        }
     }
 
     destroy_partition_tree(&tree);
