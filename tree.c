@@ -107,7 +107,8 @@ void binary_search_array_simd(int32_t *array, int32_t length, int32_t probe,
         cmp = _mm_packs_epi32(cmp, _mm_setzero_si128());
         cmp = _mm_packs_epi16(cmp, _mm_setzero_si128());
 
-        // apparently if mask = 0 or 1, res = 0, so I'm shifting mask by 1
+        // apparently _bit_scan_reverse(0 or 1) = 0
+        // so I'm shifting mask by 1
         int mask = _mm_movemask_epi8(cmp);
         res  = _bit_scan_reverse(mask << 1);
 
@@ -127,7 +128,6 @@ void binary_search_array_simd(int32_t *array, int32_t length, int32_t probe,
         __m128i cmp_A2H = _mm_packs_epi32(cmp_ABCD, cmp_EFGH);
         __m128i cmp     = _mm_packs_epi16(cmp_A2H, _mm_setzero_si128());
 
-        // apparently if mask = 0 or 1, res = 0, so I'm shifting mask by 1
         int mask = _mm_movemask_epi8(cmp);
         res  = _bit_scan_reverse(mask << 1);
         
@@ -149,7 +149,6 @@ void binary_search_array_simd(int32_t *array, int32_t length, int32_t probe,
         __m128i cmp_I2P = _mm_packs_epi32(cmp_IJKL, cmp_MNOP);
         __m128i cmp     = _mm_packs_epi16(cmp_A2H,  cmp_I2P);
 
-        // apparently if mask = 0 or 1, res = 0, so I'm shifting mask by 1
         int mask = _mm_movemask_epi8(cmp);
         res  = _bit_scan_reverse(mask << 1);
 
@@ -186,174 +185,173 @@ void binary_search_partition_simd(partition_tree *tree, int32_t probe, int32_t *
     }
 }
 
+// debugging
+void print128_num(__m128i var) {
+    uint32_t *val = (uint32_t*) &var;
+    printf("Numerical: %u %u %u %u\n",
+           val[0], val[1], val[2], val[3]);
+}
+
 // hard-coded version of binary search
 // 4 probes at a time
-void binary_search_partition_959(partition_tree *tree, int32_t* probes, int32_t *ranges) {
+void binary_search_partition_959(partition_tree *tree, int32_t num_probes, int32_t* probes, int32_t *ranges) {
     assert(tree->num_levels == 3);
     assert(tree->fanouts[0] == 9 && tree->fanouts[1] == 5 && tree->fanouts[2] == 9);
 
-    __m128i p = _mm_load_si128((__m128i*) &probes);
-    register __m128i p1 = _mm_shuffle_epi32(p, _MM_SHUFFLE(0,0,0,0));
-    register __m128i p2 = _mm_shuffle_epi32(p, _MM_SHUFFLE(1,1,1,1));
-    register __m128i p3 = _mm_shuffle_epi32(p, _MM_SHUFFLE(2,2,2,2));
-    register __m128i p4 = _mm_shuffle_epi32(p, _MM_SHUFFLE(3,3,3,3));
+    // load keys at root level into registers
+    register __m128i root_ABCD = _mm_load_si128((__m128i *) (tree->nodes[0]));
+    register __m128i root_EFGH = _mm_load_si128((__m128i *) (tree->nodes[0] + 4));
 
     __m128i dels_ABCD, dels_EFGH, cmp_ABCD, cmp_EFGH, cmp_A2H, cmp;
     int mask, res1, res2, res3, res4;
 
-    // TODO: load root keys into register variables
-    // first level
-    // p1
-    int32_t *start = tree->nodes[0];
-    printf("keys: %d %d %d %d\n", *start, *(start+1), *(start+2), *(start+3));
+    for (size_t i = 0; i + 3 < num_probes; i += 4) {
+        __m128i p = _mm_load_si128((__m128i *) &probes[i]);
+        register __m128i p1 = _mm_shuffle_epi32(p, _MM_SHUFFLE(0,0,0,0));
+        register __m128i p2 = _mm_shuffle_epi32(p, _MM_SHUFFLE(1,1,1,1));
+        register __m128i p3 = _mm_shuffle_epi32(p, _MM_SHUFFLE(2,2,2,2));
+        register __m128i p4 = _mm_shuffle_epi32(p, _MM_SHUFFLE(3,3,3,3));
+
+        // first (root) level
+        // p1
+        cmp_ABCD = _mm_cmpgt_epi32(p1, root_ABCD);
+        cmp_EFGH = _mm_cmpgt_epi32(p1, root_EFGH);
     
-    dels_ABCD = _mm_load_si128((__m128i *) tree->nodes[0]);
-    dels_EFGH = _mm_load_si128((__m128i *) (tree->nodes[0] + 4));
+        cmp_A2H = _mm_packs_epi32(cmp_ABCD, cmp_EFGH);
+        cmp     = _mm_packs_epi16(cmp_A2H, _mm_setzero_si128());
 
-    cmp_ABCD = _mm_cmpgt_epi32(p1, dels_ABCD);
-    cmp_EFGH = _mm_cmpgt_epi32(p1, dels_EFGH);
+        mask = _mm_movemask_epi8(cmp);
+        res1 = _bit_scan_reverse(mask << 1);
+
+        // p2
+        cmp_ABCD = _mm_cmpgt_epi32(p2, root_ABCD);
+        cmp_EFGH = _mm_cmpgt_epi32(p2, root_EFGH);
     
-    cmp_A2H = _mm_packs_epi32(cmp_ABCD, cmp_EFGH);
-    cmp     = _mm_packs_epi16(cmp_A2H, _mm_setzero_si128());
+        cmp_A2H = _mm_packs_epi32(cmp_ABCD, cmp_EFGH);
+        cmp     = _mm_packs_epi16(cmp_A2H, _mm_setzero_si128());
 
-    mask = _mm_movemask_epi8(cmp);
-    res1 = _bit_scan_reverse(mask << 1);
+        mask = _mm_movemask_epi8(cmp);
+        res2 = _bit_scan_reverse(mask << 1);
 
-    // p2
-    cmp_ABCD = _mm_cmpgt_epi32(p2, dels_ABCD);
-    cmp_EFGH = _mm_cmpgt_epi32(p2, dels_EFGH);
+        // p3
+        cmp_ABCD = _mm_cmpgt_epi32(p3, root_ABCD);
+        cmp_EFGH = _mm_cmpgt_epi32(p3, root_EFGH);
     
-    cmp_A2H = _mm_packs_epi32(cmp_ABCD, cmp_EFGH);
-    cmp     = _mm_packs_epi16(cmp_A2H, _mm_setzero_si128());
+        cmp_A2H = _mm_packs_epi32(cmp_ABCD, cmp_EFGH);
+        cmp     = _mm_packs_epi16(cmp_A2H, _mm_setzero_si128());
 
-    mask = _mm_movemask_epi8(cmp);
-    res2 = _bit_scan_reverse(mask << 1);
+        mask = _mm_movemask_epi8(cmp);
+        res3 = _bit_scan_reverse(mask << 1);
 
-    // p3
-    cmp_ABCD = _mm_cmpgt_epi32(p3, dels_ABCD);
-    cmp_EFGH = _mm_cmpgt_epi32(p3, dels_EFGH);
+        // p4
+        cmp_ABCD = _mm_cmpgt_epi32(p4, root_ABCD);
+        cmp_EFGH = _mm_cmpgt_epi32(p4, root_EFGH);
     
-    cmp_A2H = _mm_packs_epi32(cmp_ABCD, cmp_EFGH);
-    cmp     = _mm_packs_epi16(cmp_A2H, _mm_setzero_si128());
+        cmp_A2H = _mm_packs_epi32(cmp_ABCD, cmp_EFGH);
+        cmp     = _mm_packs_epi16(cmp_A2H, _mm_setzero_si128());
 
-    mask = _mm_movemask_epi8(cmp);
-    res3 = _bit_scan_reverse(mask << 1);
-
-    // p4
-    cmp_ABCD = _mm_cmpgt_epi32(p4, dels_ABCD);
-    cmp_EFGH = _mm_cmpgt_epi32(p4, dels_EFGH);
+        mask = _mm_movemask_epi8(cmp);
+        res4 = _bit_scan_reverse(mask << 1);
     
-    cmp_A2H = _mm_packs_epi32(cmp_ABCD, cmp_EFGH);
-    cmp     = _mm_packs_epi16(cmp_A2H, _mm_setzero_si128());
-
-    mask = _mm_movemask_epi8(cmp);
-    res4 = _bit_scan_reverse(mask << 1);
-    printf("level 1: res1=%d, res2=%d, res3=%d, res4=%d\n", res1, res2, res3, res4);
-    
-    // second level
-    // p1
-    /* int32_t *start = &tree->nodes[1][res1*4]; */
-    /* printf("keys: %d %d %d %d\n", *start, *(start+1), *(start+2), *(start+3)); */
-    
-    dels_ABCD = _mm_load_si128((__m128i *) (&tree->nodes[1][res1*4]));
-    cmp_ABCD  = _mm_cmpgt_epi32(p1, dels_ABCD);
+        // second level
+        // p1
+        dels_ABCD = _mm_load_si128((__m128i *) (&tree->nodes[1][res1*4]));
+        cmp_ABCD  = _mm_cmpgt_epi32(p1, dels_ABCD);
         
-    cmp = _mm_packs_epi32(cmp_ABCD, _mm_setzero_si128());
-    cmp = _mm_packs_epi16(cmp, _mm_setzero_si128());
+        cmp = _mm_packs_epi32(cmp_ABCD, _mm_setzero_si128());
+        cmp = _mm_packs_epi16(cmp, _mm_setzero_si128());
 
-    mask = _mm_movemask_epi8(cmp);
-    res1 = res1 * 5 + _bit_scan_reverse(mask << 1);
-    /* printf("offset: %d\n", _bit_scan_reverse(mask << 1)); */
+        mask = _mm_movemask_epi8(cmp);
+        res1 = res1 * 5 + _bit_scan_reverse(mask << 1);
 
-    // p2
-    dels_ABCD = _mm_load_si128((__m128i *) (&tree->nodes[1][res2*4]));
-    cmp_ABCD  = _mm_cmpgt_epi32(p2, dels_ABCD);
+        // p2
+        dels_ABCD = _mm_load_si128((__m128i *) (&tree->nodes[1][res2*4]));
+        cmp_ABCD  = _mm_cmpgt_epi32(p2, dels_ABCD);
         
-    cmp = _mm_packs_epi32(cmp_ABCD, _mm_setzero_si128());
-    cmp = _mm_packs_epi16(cmp, _mm_setzero_si128());
+        cmp = _mm_packs_epi32(cmp_ABCD, _mm_setzero_si128());
+        cmp = _mm_packs_epi16(cmp, _mm_setzero_si128());
 
-    mask = _mm_movemask_epi8(cmp);
-    res2 = res2 * 5 + _bit_scan_reverse(mask << 1);
+        mask = _mm_movemask_epi8(cmp);
+        res2 = res2 * 5 + _bit_scan_reverse(mask << 1);
 
-    // p3
-    dels_ABCD = _mm_load_si128((__m128i *) (&tree->nodes[1][res3*4]));
-    cmp_ABCD  = _mm_cmpgt_epi32(p3, dels_ABCD);
+        // p3
+        dels_ABCD = _mm_load_si128((__m128i *) (&tree->nodes[1][res3*4]));
+        cmp_ABCD  = _mm_cmpgt_epi32(p3, dels_ABCD);
         
-    cmp = _mm_packs_epi32(cmp_ABCD, _mm_setzero_si128());
-    cmp = _mm_packs_epi16(cmp, _mm_setzero_si128());
+        cmp = _mm_packs_epi32(cmp_ABCD, _mm_setzero_si128());
+        cmp = _mm_packs_epi16(cmp, _mm_setzero_si128());
 
-    mask = _mm_movemask_epi8(cmp);
-    res3 = res3 * 5 + _bit_scan_reverse(mask << 1);
+        mask = _mm_movemask_epi8(cmp);
+        res3 = res3 * 5 + _bit_scan_reverse(mask << 1);
 
-    // p4
-    dels_ABCD = _mm_load_si128((__m128i *) (&tree->nodes[1][res4*4]));
-    cmp_ABCD  = _mm_cmpgt_epi32(p4, dels_ABCD);
+        // p4
+        dels_ABCD = _mm_load_si128((__m128i *) (&tree->nodes[1][res4*4]));
+        cmp_ABCD  = _mm_cmpgt_epi32(p4, dels_ABCD);
     
-    cmp = _mm_packs_epi32(cmp_ABCD, _mm_setzero_si128());
-    cmp = _mm_packs_epi16(cmp, _mm_setzero_si128());
+        cmp = _mm_packs_epi32(cmp_ABCD, _mm_setzero_si128());
+        cmp = _mm_packs_epi16(cmp, _mm_setzero_si128());
 
-    mask = _mm_movemask_epi8(cmp);
-    res4 = res4 * 5 + _bit_scan_reverse(mask << 1);
-    printf("level 2: res1=%d, res2=%d, res3=%d, res4=%d\n", res1, res2, res3, res4);
+        mask = _mm_movemask_epi8(cmp);
+        res4 = res4 * 5 + _bit_scan_reverse(mask << 1);
     
-    // third level
-    // p1
-    dels_ABCD = _mm_load_si128((__m128i *) (&tree->nodes[2][res1*8]));
-    dels_EFGH = _mm_load_si128((__m128i *) (&tree->nodes[2][res1*8] + 4));
+        // third level
+        // p1
+        dels_ABCD = _mm_load_si128((__m128i *) (&tree->nodes[2][res1*8]));
+        dels_EFGH = _mm_load_si128((__m128i *) (&tree->nodes[2][res1*8] + 4));
 
-    cmp_ABCD = _mm_cmpgt_epi32(p1, dels_ABCD);
-    cmp_EFGH = _mm_cmpgt_epi32(p1, dels_EFGH);
+        cmp_ABCD = _mm_cmpgt_epi32(p1, dels_ABCD);
+        cmp_EFGH = _mm_cmpgt_epi32(p1, dels_EFGH);
     
-    cmp_A2H = _mm_packs_epi32(cmp_ABCD, cmp_EFGH);
-    cmp     = _mm_packs_epi16(cmp_A2H, _mm_setzero_si128());
+        cmp_A2H = _mm_packs_epi32(cmp_ABCD, cmp_EFGH);
+        cmp     = _mm_packs_epi16(cmp_A2H, _mm_setzero_si128());
 
-    mask = _mm_movemask_epi8(cmp);
-    res1 = res1 * 9 + _bit_scan_reverse(mask << 1);
+        mask = _mm_movemask_epi8(cmp);
+        res1 = res1 * 9 + _bit_scan_reverse(mask << 1);
 
-    // p2
-    dels_ABCD = _mm_load_si128((__m128i *) (&tree->nodes[2][res2*8]));
-    dels_EFGH = _mm_load_si128((__m128i *) (&tree->nodes[2][res2*8] + 4));
+        // p2
+        dels_ABCD = _mm_load_si128((__m128i *) (&tree->nodes[2][res2*8]));
+        dels_EFGH = _mm_load_si128((__m128i *) (&tree->nodes[2][res2*8] + 4));
 
-    cmp_ABCD = _mm_cmpgt_epi32(p2, dels_ABCD);
-    cmp_EFGH = _mm_cmpgt_epi32(p2, dels_EFGH);
+        cmp_ABCD = _mm_cmpgt_epi32(p2, dels_ABCD);
+        cmp_EFGH = _mm_cmpgt_epi32(p2, dels_EFGH);
     
-    cmp_A2H = _mm_packs_epi32(cmp_ABCD, cmp_EFGH);
-    cmp     = _mm_packs_epi16(cmp_A2H, _mm_setzero_si128());
+        cmp_A2H = _mm_packs_epi32(cmp_ABCD, cmp_EFGH);
+        cmp     = _mm_packs_epi16(cmp_A2H, _mm_setzero_si128());
 
-    mask = _mm_movemask_epi8(cmp);
-    res2 = res2 * 9 + _bit_scan_reverse(mask << 1);
+        mask = _mm_movemask_epi8(cmp);
+        res2 = res2 * 9 + _bit_scan_reverse(mask << 1);
     
-    // p3
-    dels_ABCD = _mm_load_si128((__m128i *) (&tree->nodes[2][res3*8]));
-    dels_EFGH = _mm_load_si128((__m128i *) (&tree->nodes[2][res3*8] + 4));
+        // p3
+        dels_ABCD = _mm_load_si128((__m128i *) (&tree->nodes[2][res3*8]));
+        dels_EFGH = _mm_load_si128((__m128i *) (&tree->nodes[2][res3*8] + 4));
 
-    cmp_ABCD = _mm_cmpgt_epi32(p3, dels_ABCD);
-    cmp_EFGH = _mm_cmpgt_epi32(p3, dels_EFGH);
+        cmp_ABCD = _mm_cmpgt_epi32(p3, dels_ABCD);
+        cmp_EFGH = _mm_cmpgt_epi32(p3, dels_EFGH);
     
-    cmp_A2H = _mm_packs_epi32(cmp_ABCD, cmp_EFGH);
-    cmp     = _mm_packs_epi16(cmp_A2H, _mm_setzero_si128());
+        cmp_A2H = _mm_packs_epi32(cmp_ABCD, cmp_EFGH);
+        cmp     = _mm_packs_epi16(cmp_A2H, _mm_setzero_si128());
 
-    mask = _mm_movemask_epi8(cmp);
-    res3 = res3 * 9 + _bit_scan_reverse(mask << 1);
+        mask = _mm_movemask_epi8(cmp);
+        res3 = res3 * 9 + _bit_scan_reverse(mask << 1);
 
-    // p4
-    dels_ABCD = _mm_load_si128((__m128i *) (&tree->nodes[2][res4*8]));
-    dels_EFGH = _mm_load_si128((__m128i *) (&tree->nodes[2][res4*8] + 4));
+        // p4
+        dels_ABCD = _mm_load_si128((__m128i *) (&tree->nodes[2][res4*8]));
+        dels_EFGH = _mm_load_si128((__m128i *) (&tree->nodes[2][res4*8] + 4));
 
-    cmp_ABCD = _mm_cmpgt_epi32(p4, dels_ABCD);
-    cmp_EFGH = _mm_cmpgt_epi32(p4, dels_EFGH);
+        cmp_ABCD = _mm_cmpgt_epi32(p4, dels_ABCD);
+        cmp_EFGH = _mm_cmpgt_epi32(p4, dels_EFGH);
     
-    cmp_A2H = _mm_packs_epi32(cmp_ABCD, cmp_EFGH);
-    cmp     = _mm_packs_epi16(cmp_A2H, _mm_setzero_si128());
+        cmp_A2H = _mm_packs_epi32(cmp_ABCD, cmp_EFGH);
+        cmp     = _mm_packs_epi16(cmp_A2H, _mm_setzero_si128());
 
-    mask = _mm_movemask_epi8(cmp);
-    res4 = res4 * 9 + _bit_scan_reverse(mask << 1);
-    printf("level 3: res1=%d, res2=%d, res3=%d, res4=%d\n", res1, res2, res3, res4);
+        mask = _mm_movemask_epi8(cmp);
+        res4 = res4 * 9 + _bit_scan_reverse(mask << 1);
 
-    ranges[0] = res1;
-    ranges[1] = res2;
-    ranges[2] = res3;
-    ranges[3] = res4;
+        ranges[i+0] = res1;
+        ranges[i+1] = res2;
+        ranges[i+2] = res3;
+        ranges[i+3] = res4;
+    }
 }
 
 void init_partition_tree(int32_t k, int32_t *keys, int32_t num_levels, int32_t *fanouts,
@@ -429,7 +427,7 @@ void print_partition_tree(partition_tree *tree) {
         for (j = 0; j < keys_at_level; j++) {
             if (tree->nodes[i][j] == INT32_MAX) {
                 printf("MAX, ");
-                continue;
+                break;
             }
             printf("%d, ", tree->nodes[i][j]);
         }
