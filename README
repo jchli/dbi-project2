@@ -10,6 +10,8 @@ Run the program with:
 
 ./build <num keys> <num probes> <list of fanouts...>
 
+Right now, the program runs code in the SIMD implementation (part 2 of the project), and if the specified fanout factors are 9 5 9, then it automatically switches to using the hard-coded 9-5-9 optimizations. 
+
 ## Program Structure ##
 
 The main routine is in build.c, and the implementation of the array-based tree used for partitioning is in tree.c and tree.h. random.c and random.h contains the provided code for generating random numbers.
@@ -30,7 +32,5 @@ typedef struct partition_tree {
 
 When constructing the tree, memory is pre-allocated to be the maximum possible length at each level. For example, for a 9 5 9 tree, we allocate 8x32 bytes for root level, 9x4x32 bytes for 2nd level, and 9x5x8 bytes for 3rd level. Then we insert the given keys in sorted order into the tree as suggested by the project description (roughly speaking, in a bottom-up order). Finally, for each level of the tree that isn't full, we pad it with at least one MAXINT, and at most one node full of MAXINTs. This is to ensure correct behavior for the binary search.
 
-Binary search is implemented as two functions: the parent function invokes the child function on every level of the tree, and the child function performs binary search in a sub-array of a specific level.
-
-The code also contains some commented-out pieces for part 2 of the project, but they shouldn't affect the behavior or performance of the part 1 submission.
+Binary search is implemented as two functions: the parent function invokes the child function on every level of the tree, and the child function performs binary search or SIMD search in a sub-array of a specific level.
 
