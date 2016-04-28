@@ -41,15 +41,6 @@ int main(int argc, char *argv[]) {
     rand32_t *gen  = rand32_init(time(NULL));
     int32_t  *keys = generate_sorted_unique(num_keys, gen);
     
-    /* // these are for testing */
-    /* int32_t *keys = malloc(num_keys * sizeof(int32_t)); */
-    /* for (i = 0; i != num_keys; i++) */
-    /*     keys[i] = i; */
-
-    /* int32_t *probes = malloc(num_probes * sizeof(int32_t)); */
-    /* for (i = 0; i != num_probes; i++) */
-    /*     probes[i] = i; */
-
     // build the partition tree
     partition_tree tree;
     init_partition_tree(num_keys, keys, num_levels, fanouts, &tree);
@@ -70,7 +61,7 @@ int main(int argc, char *argv[]) {
             binary_search_partition_959(&tree, num_probes, probes, ranges);
 
             for (i = 0; i < num_probes; i++) {
-                verify_probe(num_keys, keys, probes[i], ranges[i]);
+                /* verify_probe(num_keys, keys, probes[i], ranges[i]); */
                 printf("%d %d\n", probes[i], ranges[i]);
             }
         } else {
@@ -78,18 +69,15 @@ int main(int argc, char *argv[]) {
             for (i = 0; i < num_probes; i++){
                 binary_search_partition_simd(&tree, probes[i], &range);
 
-                /* // NOTE: comment these out when doing performance tests */
+                // NOTE: comment these out when doing performance tests
                 /* verify_probe(num_keys, keys, probes[i], range); */
-                /* printf("%d %d\n", probes[i], range); */
+                printf("%d %d\n", probes[i], range);
             }
         }
 
         clock_t end = clock();
     
-        
         elapsed_times[exp] = (end - start)/(double)CLOCKS_PER_SEC * 1000;
-        /* printf("elapsed time for phase 2: %.3f milliseconds.\n", elapsed_times[exp]); */
-
         free(probes);
     }
 
