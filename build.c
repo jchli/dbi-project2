@@ -6,7 +6,7 @@
 #include "tree.h"
 #include "random.h"
 
-#define NUM_EXPERIMENTS 5
+#define NUM_EXPERIMENTS 1
 
 // verifies that the resulting range of a probe is correct
 void verify_probe(int32_t num_keys, int32_t *keys, int32_t probe, int32_t range);
