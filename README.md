@@ -1,2 +1,2 @@
-# dbi-project2
-w4112 project2: in-memory tree structure for range partitioning
+# Database System Implementation Project
+in-memory tree structure for fast range partitioning, incorporating optimizations with SIMD insturctions
